@@ -1,0 +1,17 @@
+---
+title: "MicroArray Analysis"
+author: "Filipe Santos"
+date: "15/06/2020"
+output: pdf_document
+---
+
+```{r}
+chip2 <- read.table("chip2.txt", header=T)
+chip2$ID <- NULL
+
+chip3 <- read.table("chip3.txt", header = T)
+chip3$ID <- NULL
+
+
+```
+
