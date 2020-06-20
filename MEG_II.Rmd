@@ -1,0 +1,222 @@
+---
+title: "Projeto MEG, Parte II - Questão 1"
+author: "Andreia Marçal & Filipe Santos"
+date: "13/06/2020"
+output: html_document
+---
+
+```{r}
+rm(list=ls())
+```
+
+# Bibliotecas
+
+```{r}
+# BiocManager::install("genArise")
+# library(locfit)
+# library(tkrplot)
+# library(xtable)
+
+library(genArise)
+library(limma)
+library(ggplot2)
+```
+
+# Dados
+
+```{r}
+chip1 <- read.table("chip1.txt", header = T) 
+class(chip1) # "data.frame"
+
+chip1.spot <- read.spot("chip1.txt", cy3 = 3, cy5 = 2, bg.cy3 = 5, bg.cy5 = 4, ids = 1, header = T, sep = "\t", is.ifc = FALSE) #Cy3 - Ven (green); Cy5 - Art (red)
+class(chip1.spot) # "Spot"
+
+data(chip1) # data set �chip1.df� not found
+data(chip1.spot) # data set �chip1.spot� not found
+ls() # "chip1.df" "chip1.spot"
+```
+
+# Chip 1
+
+## a) Represente graﬁcamente as intensidades observadas nos dois canais, através do diagrama de dispersão e do MA-plot.
+
+```{r}
+# diagrama de dispersão:
+#plot(chip1$Art, chip1$Ven, xlab = "Art", ylab = "Ven")
+
+ggplot(chip1) +
+  geom_point(aes(x = Art, y = Ven)) +
+  geom_abline() +
+  xlab("Art") +
+  ylab("Ven")
+
+ggplot# MA-plot (linear regression of log ratio against average itensity):
+ma.plot(chip1.spot)
+```
+
+
+## b) Faça a subtração do background, nos dois canais, e compare os resultados utilizando a representação gráﬁca conveniente. 
+
+```{r}
+par(mfrow=c(1,2))
+c.spot <- bg.correct(chip1.spot)
+
+# Raw data
+ma.plot(chip1.spot)
+title(main = "Raw")
+
+# Background corrected
+ma.plot(c.spot)
+title(main="Corrected")
+```
+
+
+## c) Normalize o array e volte a comparar os resultados. 
+
+```{r}
+# grid normalization 
+n.spot <- grid.norm(chip1.spot, nr = 23, nc = 24) # ??nr ??nc
+#ri.plot(n.spot)
+#ma.plot(n.spot)
+
+# global normalization
+n.spot <- global.norm(chip1.spot)
+# ri.plot(n.spot)
+#ma.plot(n.spot)
+
+# comparing Raw vs Corrected vs Normalized & Corrected
+par(mfrow=c(1,3))
+ma.plot(chip1.spot)
+ma.plot(c.spot)
+ma.plot(n.spot)
+```
+
+
+## d) Calcule o Z-score para cada gene. Construa o gráﬁco adequado e baseie-se nele para estabelecer um ponto de corte que lhe permita criar listas de genes com expressão diferencial em Art e em Ven.
+
+
+```{r}
+# Identifying differentially expressed genes
+# Z-score, R-I plot
+#s.spot.ri <- Zscore(chip1.spot, type = "ri")
+#s.spot.ma <- Zscore(chip1.spot, type = "ma")
+normScore <- Zscore(n.spot, type = "ma")
+
+# plotting datasets - s.spot
+#Zscore.plot(s.spot.ri)
+#Zscore.plot(s.spot.ma)
+#abline(h=2, col='red', lty=2) 
+#abline(h=-2, col='red', lty=2) 
+
+Zscore.plot(normScore)
+abline(h=2, col='white', lty=2) 
+abline(h=-2, col='white', lty=2)
+```
+
+# Chips 2 e 3
+```{r}
+# importing chips 2 and 3
+chip2 <- read.table("chip2.txt", header = T)
+chip3 <- read.table("chip3.txt", header = T)
+
+# getting spot objects from chip data
+spot2 <- read.spot("chip2.txt", header=T, cy3=2, bg.cy3=4, cy5=3, bg.cy5=5, ids=1, sep = "\t", is.ifc = FALSE)
+class(spot2)
+
+spot3 <- read.spot("chip3.txt", header=T, cy3=2, bg.cy3=4, cy5=3, bg.cy5=5, ids=1, sep = "\t", is.ifc = FALSE)
+class(spot3)
+```
+
+## e) Normalize os dois arrays tendo em conta o processo de normalização considerado anteriormente.
+```{r}
+# grid normalization
+grNorm2 <- grid.norm(mySpot = spot2, nr=2994, nc=5)
+ma.plot(grNorm2)
+
+grNorm3 <- grid.norm(mySpot = spot3, nr=2994, nc=5)
+ma.plot(grNorm3)
+
+# global normalization
+grGlob2 <- global.norm(mySpot = spot2)
+ma.plot(grGlob2)
+
+grGlob3 <- global.norm(mySpot = spot3)
+ma.plot(grGlob3)
+```
+
+```{r}
+# Selecting only statistically different elements from the background
+filter2 <- filter.spot(mySpot = grGlob2)
+ma.plot(filter2)
+
+filter3 <- filter.spot(mySpot = grGlob3)
+ma.plot(filter3)
+```
+
+```{r}
+# Filtering replicates
+rep2 <- spotUnique(mySpot = filter2)
+ma.plot(rep2)
+
+rep3 <- spotUnique(mySpot = filter3)
+ma.plot(rep3)
+```
+
+## f) Proceda à normalização entre arrays fazendo uma transformação conveniente dos dados (sugestão: centering).
+```{r}
+
+```
+
+## g) Com base nos Z-scores identifique os genes com expressão diferencial nos três arrays. Comente este procedimento.
+```{r}
+zscore2 <- Zscore(rep2, type="ma")
+zscore3 <- Zscore(rep3, type="ma")
+
+Zscore.plot(zscore2)
+abline(h=2, col='white', lty=2) 
+abline(h=-2, col='white', lty=2) 
+
+Zscore.plot(zscore3)
+abline(h=2, col='white', lty=2) 
+abline(h=-2, col='white', lty=2)
+```
+
++ Identificação dos genes com expressão diferencial em cada um dos 3 arrays.
+
+```{r}
+diff1 <- list(normScore@dataSets$Id[normScore@dataSets$Zscore<-2 & normScore@dataSets$Zscore>2])
+diff2 <- list(zscore2@dataSets$Id[zscore2@dataSets$Zscore<-2 & zscore2@dataSets$Zscore>2])
+diff3 <- list(zscore3@dataSets$Id[zscore3@dataSets$Zscore<-2 & zscore3@dataSets$Zscore>2])
+```
+
+## h) Aplique o método bayesiano de Lonnstedt e Speed (package limma). Estabeleça algumas linhas de comando para identificar os genes com expressão diferencial e justifique o ponto de corte considerado.
+```{r}
+# chip1
+chip1$ID <- NULL
+fit1 <- lmFit(chip1)
+fit1 <- eBayes(fit1)
+
+table1 <- topTable(fit1, number=nrow(fit1), adjust="BH")
+table1 <- subset(table1, table1$P.Value < 0.05)
+table1[order(table1$P.Value),]
+
+# chip2
+chip2$ID <- NULL
+fit2 <- lmFit(chip2)
+fit2 <- eBayes(fit2)
+
+table2 <- topTable(fit2, number=nrow(fit2), adjust="BH")
+table2 <- subset(table2, table1$P.Value < 0.05)
+table2[order(table2$P.Value),]
+
+# chip3
+chip3$ID <- NULL
+fit3 <- lmFit(chip3)
+fit3 <- eBayes(fit3)
+
+table3 <- topTable(fit3, number=nrow(fit3), adjust="BH")
+table3 <- subset(table3, table3$P.Value < 0.05)
+table3[order(table3$P.Value),]
+```
+
+## i) Comente os resultados obtidos pelos dois métodos.

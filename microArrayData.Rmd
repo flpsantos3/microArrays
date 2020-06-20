@@ -5,13 +5,98 @@ date: "15/06/2020"
 output: pdf_document
 ---
 
+# Chips 2 e 3
 ```{r}
-chip2 <- read.table("chip2.txt", header=T)
-chip2$ID <- NULL
+rm(list=ls())
 
+#if (!requireNamespace("BiocManager", quietly = TRUE))
+    #install.packages("BiocManager")
+
+#BiocManager::install("genArise")
+
+library(genArise)
+library(limma)
+```
+
+```{r}
+chip2 <- read.table("chip2.txt", header = T)
 chip3 <- read.table("chip3.txt", header = T)
-chip3$ID <- NULL
+```
 
+
+```{r}
+# getting spot objects from chip data
+spot2 <- read.spot("chip2.txt", header=T, cy3=2, bg.cy3=4, cy5=3, bg.cy5=5, ids=1, sep = "\t", is.ifc = FALSE)
+class(spot2)
+
+spot3 <- read.spot("chip3.txt", header=T, cy3=2, bg.cy3=4, cy5=3, bg.cy5=5, ids=1, sep = "\t", is.ifc = FALSE)
+class(spot3)
+```
+
+# e) Normalize os dois arrays tendo em conta o processo de normalização considerado anteriormente.
+```{r}
+# grid normalization
+grNorm2 <- grid.norm(mySpot = spot2, nr=2994, nc=5)
+ma.plot(grNorm2)
+
+grNorm3 <- grid.norm(mySpot = spot3, nr=2994, nc=5)
+ma.plot(grNorm3)
+
+# global normalization
+grGlob2 <- global.norm(mySpot = spot2)
+ma.plot(grGlob2)
+
+grGlob3 <- global.norm(mySpot = spot3)
+ma.plot(grGlob3)
+```
+
+
+```{r}
+# Selecting only statistically different elements from the background
+filter2 <- filter.spot(mySpot = grNorm2)
+ma.plot(filter2)
+
+filter3 <- filter.spot(mySpot = grNorm3)
+ma.plot(filter3)
+```
+
+```{r}
+# Filtering replicates
+rep2 <- spotUnique(mySpot = filter2)
+ma.plot(rep2)
+
+rep3 <- spotUnique(mySpot = filter3)
+ma.plot(rep3)
+```
+
+# f)
+```{r}
 
 ```
 
+# g) Com base nos Z-scores identifique os genes com expressão diferencial nos três arrays. Comente este procedimento.
+```{r}
+zscore2 <- Zscore(rep2, type="ma")
+zscore3 <- Zscore(rep3, type="ma")
+
+Zscore.plot(zscore2)
+abline(h=1.5, col='white', lty=2) 
+abline(h=-1, col='white', lty=2) 
+
+Zscore.plot(zscore3)
+abline(h=1.5, col='white', lty=2) 
+abline(h=-2, col='white', lty=2) 
+```
+
+```{r}
+diff2 <- zscore2@dataSets$Id[zscore2@dataSets$Zscore<-1 & zscore2@dataSets$Zscore>1.5]
+diff3 <- zscore3@dataSets$Id[zscore3@dataSets$Zscore<-2 & zscore3@dataSets$Zscore>1.5]
+```
+
+# h)
+```{r}
+?limma
+```
+
+
+# i) Comente os resultados obtidos pelos dois métodos.
