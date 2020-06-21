@@ -75,30 +75,30 @@ title(main="Corrected")
 
 ```{r}
 # grid normalization 
-n.spot <- grid.norm(c.spot, nr = 23, nc = 24) # ??nr ??nc
+grid.n.spot <- grid.norm(c.spot, nr=2994, nc=5) # ??nr ??nc
 #ri.plot(n.spot)
 #ma.plot(n.spot)
 
 # global normalization
-n.spot <- global.norm(c.spot)
+global.n.spot <- global.norm(c.spot)
 # ri.plot(n.spot)
-#ma.plot(n.spot)
+# ma.plot(n.spot)
 
 # comparing Raw vs Corrected vs Normalized & Corrected
 par(mfrow=c(1,3))
 ma.plot(chip1.spot)
 ma.plot(c.spot)
 ma.plot(n.spot)
+par(mfrow=c(1,1))
 ```
 
 
 ## d) Calcule o Z-score para cada gene. Construa o gráﬁco adequado e baseie-se nele para estabelecer um ponto de corte que lhe permita criar listas de genes com expressão diferencial em Art e em Art.
 
-
 ```{r}
 # Identifying differentially expressed genes
 # Z-score, M-A plot
-zScore1 <- Zscore(n.spot, type = "ma")
+zScore1 <- Zscore(global.n.spot, type = "ma")
 
 # plotting datasets - s.spot
 Zscore.plot(zScore1)
@@ -115,7 +115,6 @@ chip3 <- read.table("chip3.txt", header = T)
 # getting spot objects from chip data
 spot2 <- read.spot("chip2.txt", header=T, cy3=2, bg.cy3=4, cy5=3, bg.cy5=5, ids=1, sep = "\t", is.ifc = FALSE)
 #str(spot2)
-
 spot3 <- read.spot("chip3.txt", header=T, cy3=2, bg.cy3=4, cy5=3, bg.cy5=5, ids=1, sep = "\t", is.ifc = FALSE)
 #str(spot3)
 
@@ -128,17 +127,17 @@ spot3 <- bg.correct(spot3)
 ```{r}
 # grid normalization
 grNorm2 <- grid.norm(mySpot = spot2, nr=2994, nc=5)
-ma.plot(grNorm2)
+#ma.plot(grNorm2)
 
 grNorm3 <- grid.norm(mySpot = spot3, nr=2994, nc=5)
-ma.plot(grNorm3)
+#ma.plot(grNorm3)
 
 # global normalization
 glNorm2 <- global.norm(mySpot = spot2)
 ma.plot(glNorm2)
 
 glNorm3 <- global.norm(mySpot = spot3)
-ma.plot(glNorm2)
+ma.plot(glNorm3)
 ```
 
 ## f) Proceda à normalização entre arrays fazendo uma transformação conveniente dos dados (sugestão: centering).
@@ -173,7 +172,7 @@ boxplot(normTable, ylab="(Xi-median(X))/mad(X)")
 zScore2 <- Zscore(glNorm2, type="ma")
 zScore3 <- Zscore(glNorm3, type="ma")
 
-Zscore.plot(zscore1)
+Zscore.plot(zScore1)
 abline(h=2, col='white', lty=2) 
 abline(h=-2, col='white', lty=2) 
 
@@ -201,6 +200,13 @@ ds3 <- attr(zScore3, "dataSets")
 diff3 <- ds3$Id[abs(ds3$Zscore) > 2]
 #diff3
 
+difExp1 <- length(diff1) # should be about 30 genes
+difExp2 <- length(diff2)
+difExp3 <- length(diff3)
+
+difExp1 / 2994 # should be ~0.01 (?)
+difExp2 / 2994
+difExp3 / 2994
 length(diff1) + length(diff2) + length(diff3)
 ```
 
@@ -211,20 +217,21 @@ Selecionam-se genes com maior valor de B
 ```{r}
 
 # Chip1
-bayes1 <- attr(norm1, "spotData")
+bayes1 <- attr(global.n.spot, "spotData")
 ratio11 <- log(bayes1$Cy3, 2) - log(bayes1$Cy5, 2) #Cy3/Cy5 - coeficiente = -1
 ratio12 <- log(bayes1$Cy5, 2) - log(bayes1$Cy3, 2) #Cy5/Cy3 - coeficiente = 1
 
 # Chip2
-bayes2 <- attr(norm2, "spotData")
+bayes2 <- attr(glNorm2, "spotData")
 ratio21 <- log(bayes2$Cy3, 2) - log(bayes2$Cy5, 2) #Cy3/Cy5 - coeficiente = -1
 ratio22 <- log(bayes2$Cy5, 2) - log(bayes2$Cy3, 2) #Cy5/Cy3 - coeficiente = 1
 
 # Chip3
-bayes3 <- attr(norm3, "spotData")
+bayes3 <- attr(glNorm3, "spotData")
 ratio31 <- log(bayes3$Cy3, 2) - log(bayes3$Cy5, 2) #Cy3/Cy5 - coeficiente = -1
 ratio32 <- log(bayes3$Cy5, 2) - log(bayes3$Cy3, 2) #Cy5/Cy3 - coeficiente = 1
 
+ratios <- data.frame(ratio11, ratio12, ratio21, ratio22, ratio31, ratio32)
 design <- c(-1, 1, -1, 1, -1, 1)
 fit <- lmFit(ratios, design)
 fit <- eBayes(fit)
