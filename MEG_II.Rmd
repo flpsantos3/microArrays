@@ -22,6 +22,7 @@ library(limma)
 library(ggplot2)
 library(stringr)
 library(gtools)
+library(ggrepel)
 ```
 
 # Dados
@@ -32,6 +33,7 @@ class(chip1) # "data.frame"
 
 chip1.spot <- read.spot("chip1.txt", cy3 = 3, cy5 = 2, bg.cy3 = 5, bg.cy5 = 4, ids = 1, header = T, sep = "\t", is.ifc = FALSE) #Cy3 - Ven (green); Cy5 - Art (red)
 class(chip1.spot) # "Spot"
+
 
 data(chip1) # data set �chip1.df� not found
 data(chip1.spot) # data set �chip1.spot� not found
@@ -44,15 +46,16 @@ ls() # "chip1.df" "chip1.spot"
 
 ```{r}
 # diagrama de dispersão:
-#plot(chip1$Art, chip1$Art, xlab = "Art", ylab = "Art")
+#plot(chip1$Art, chip1$Ven, xlab = "Art", ylab = "Art")
+plot(chip1$Ven, chip1$Art)
 
 ggplot(chip1) +
-  geom_point(aes(x = Art, y = Art)) +
-  geom_abline() +
-  xlab("Art") +
-  ylab("Art")
+  geom_point(aes(x = Art, y = Ven)) +
+  xlab("Cy3 - Ven") +
+  ylab("Cy5 - Art")
 
-ggplot# MA-plot (linear regression of log ratio against average itensity):
+
+# MA-plot (linear regression of log ratio against average itensity):
 ma.plot(chip1.spot)
 ```
 
@@ -95,12 +98,14 @@ par(mfrow=c(1,1))
 ```
 
 
-## d) Calcule o Z-score para cada gene. Construa o gráﬁco adequado e baseie-se nele para estabelecer um ponto de corte que lhe permita criar listas de genes com expressão diferencial em Art e em Art.
+## d) Calcule o Z-score para cada gene. Construa o gráﬁco adequado e baseie-se nele para estabelecer um ponto de corte que lhe permita criar listas de genes com expressão diferencial em Art e em Ven
 
 ```{r}
 # Identifying differentially expressed genes
+
 # Z-score, M-A plot
 zScore1 <- Zscore(global.n.spot, type = "ma")
+str(zScore1)
 
 # plotting datasets - s.spot
 Zscore.plot(zScore1)
@@ -111,33 +116,32 @@ abline(h=-2, col='white', lty=2)
 # Chips 2 e 3
 ```{r}
 # importing chips 2 and 3
+
 chip2 <- read.table("chip2.txt", header = T)
 chip3 <- read.table("chip3.txt", header = T)
 
 # getting spot objects from chip data
-spot2 <- read.spot("chip2.txt", header=T, cy3=2, bg.cy3=4, cy5=3, bg.cy5=5, ids=1, sep = "\t", is.ifc = FALSE)
-#str(spot2)
-spot3 <- read.spot("chip3.txt", header=T, cy3=2, bg.cy3=4, cy5=3, bg.cy5=5, ids=1, sep = "\t", is.ifc = FALSE)
-#str(spot3)
 
-# Background correction
-spot2 <- bg.correct(spot2)
-spot3 <- bg.correct(spot3)
+spot2 <- read.spot("chip2.txt", header=T, cy3=2, bg.cy3=4, cy5=3, bg.cy5=5, ids=1, sep = "\t", is.ifc = FALSE)
+spot3 <- read.spot("chip3.txt", header=T, cy3=2, bg.cy3=4, cy5=3, bg.cy5=5, ids=1, sep = "\t", is.ifc = FALSE)
 ```
 
 ## e) Normalize os dois arrays tendo em conta o processo de normalização considerado anteriormente.
-```{r}
-# grid normalization
-grNorm2 <- grid.norm(mySpot = spot2, nr=2994, nc=5)
-#ma.plot(grNorm2)
 
-grNorm3 <- grid.norm(mySpot = spot3, nr=2994, nc=5)
-#ma.plot(grNorm3)
+```{r}
+# Criação de objetos "Spot" a partir dos ficheiros de texto
+spot2 <- read.spot("chip2.txt", header=T, cy3=2, bg.cy3=4, cy5=3, bg.cy5=5, ids=1, sep = "\t", is.ifc = FALSE)
+spot3 <- read.spot("chip3.txt", header=T, cy3=2, bg.cy3=4, cy5=3, bg.cy5=5, ids=1, sep = "\t", is.ifc = FALSE)
+
+# Correção do background
+
+spot2 <- bg.correct(spot2)
+spot3 <- bg.correct(spot3)
 
 # global normalization
+
 glNorm2 <- global.norm(mySpot = spot2)
 ma.plot(glNorm2)
-
 glNorm3 <- global.norm(mySpot = spot3)
 ma.plot(glNorm3)
 ```
@@ -145,69 +149,50 @@ ma.plot(glNorm3)
 ## f) Proceda à normalização entre arrays fazendo uma transformação conveniente dos dados (sugestão: centering).
 
 ```{r}
-# Chip1
-M1 <- attr(global.n.spot, "spotData")
-zratio1 <- log(M1$Cy5 / M1$Cy3, 2)
-zmean1 <- mean(zratio1)
-zstd1 <- sqrt(var(zratio1))
-zChip1 <- (zratio1 - zmean1) / zstd1
+# Cálculo dos Z-Scores para os chips 2 e 3
+zScore2 <- Zscore(glNorm2, type = "ma")
+zScore3 <- Zscore(glNorm3, type = "ma")
 
-# Chip2
-M2 <- attr(glNorm2, "spotData")
-zratio2 <- log(M2$Cy5, 2) - log(M2$Cy3, 2) 
-zmean2 <- mean(zratio2)
-zstd2 <- sqrt(var(zratio2))
-zChip2 <- (zratio2 - zmean2) / zstd2
+# Construção de data frames para zScores de cada array, ordenados por ID
+z1 <- data.frame(zScore1@dataSets$Id, zScore1@dataSets$Zscore)
+colnames(z1) <- c("ID", "Zscore")
+target <- str_sort(z1$ID, numeric = T)
+z1 <- z1[match(target, z1$ID),]
 
-# Chip3
-M3 <- attr(glNorm3, "spotData")
-zratio3 <- log(M3$Cy5, 2) - log(M3$Cy3, 2) 
-zmean3 <- mean(zratio3)
-zstd3 <- sqrt(var(zratio3))
-zChip3 <- (zratio3 - zmean3) / zstd3
+z2 <- data.frame(zScore2@dataSets$Id, zScore2@dataSets$Zscore)
+colnames(z2) <- c("ID", "Zscore")
+z2 <- z2[match(target, z2$ID),]
 
-zTable <- data.frame(zChip1, zChip2, zChip3)
-boxplot(zTable, ylab="Z-score")
+z3 <- data.frame(zScore3@dataSets$Id, zScore3@dataSets$Zscore)
+colnames(z3) <- c("ID", "Zscore")
+z3 <- z3[match(target, z3$ID),]
 
+# Construção de tabela de zScores e visualização da normalização entre arrays por boxplot
+allZ <- data.frame(z1$Zscore, z2$Zscore, z3$Zscore)
+rownames(allZ) <- z1$ID
+colnames(allZ) <- c("Array1", "Array2", "Array3")
+
+boxplot(allZ)
 ```
-
 
 ## g) Com base nos Z-scores identifique os genes com expressão diferencial nos três arrays. Comente este procedimento.
 
 ```{r}
-allZscores <- rowMeans(zTable)
+# Cálculo do valor médio do Z-Score para cada gene
+Zscores <- rowMeans(allZ)
 
-plot(allZscores, ylab = "Z-Score", xlab = "ID", ylim = c(-3,3))
-abline(h = 2)
-abline(h = -2)
+# Construção de tabela com ID's dos genes e valor médio de Z-Score
+zTable <- data.frame(Zscores)
+zTable$ID <- z1$ID
+zTable <- zTable[, c(2,1)]
+colnames(zTable) <- c("ID", "ZScore")
 
-tableZ <- data.frame(allZscores)
-tableZ$ID <- as.character(M1$Id)
-tableZ <- tableZ[, c(2,1)]
+# Seleção dos genes diferencialmente expressos
+diffGenes <- zTable$ID[abs(zTable$ZScore) > 2]
+diffGenes <- as.character(diffGenes)
 
-diffGenes <- tableZ$ID[abs(tableZ$allZscores) > 2]
-diffGenes <- str_remove(diffGenes, "Id")
-length(diffGenes) #26 Genes
-
-length(diffGenes) / length(allZscores) # 0.009 - valor teórico é 0.01
-```
-
-```{r}
-zScore2 <- Zscore(glNorm2, type="ma")
-zScore3 <- Zscore(glNorm3, type="ma")
-
-str(zScore3)
-Zscore.plot(zScore1)
-abline(h=2, col='white', lty=2) 
-abline(h=-2, col='white', lty=2) 
-
-Zscore.plot(zScore2)
-abline(h=2, col='white', lty=2) 
-abline(h=-2, col='white', lty=2) 
-
-Zscore.plot(zScore3)
-abline(h=2, col='white', lty=2) 
-abline(h=-2, col='white', lty=2)
+# ID's dos genes diferencialmente expressos, número e proporção
+diffGenes; length(diffGenes); length(diffGenes) / length(Zscores)
 ```
 
 ## h) Aplique o método bayesiano de Lonnstedt e Speed (package limma). Estabeleça algumas linhas de comando para identificar os genes com expressão diferencial e justifique o ponto de corte considerado.
@@ -216,42 +201,57 @@ Ponto de corte - Bi>0; explicação no vídeo da aula de 21/5 (1:55:00)
 Selecionam-se genes com maior valor de B
 
 ```{r}
-# Construção de tabela com logratios normalizados e os seus inversos
-logMat <- data.frame(zratio1, zratio2, zratio3, -zratio1, -zratio2, -zratio3)
+# Construção de data frames ordenados por ID com valores de Cy5 e Cy3
 
-# Vetor design com valores dos coeficientes dos log-ratios
-design2 <- c(1,1,1,-1,-1,-1)
+bayes1 <- data.frame(zScore1@dataSets$Id, zScore1@dataSets$Cy5, zScore1@dataSets$Cy3)
+colnames(bayes1) <- c("ID", "Cy5", "Cy3")
+target <- str_sort(bayes1$ID, numeric = T)
+bayes1 <- bayes1[match(target, bayes1$ID),]
 
-# Aplicando modelo bayesiano de Lonnstedt e Speed aos rácios, segundo vetor design
-fit2 <- lmFit(logMat, design2)
-fit2 <- eBayes(fit2)
+bayes2 <- data.frame(zScore2@dataSets$Id, zScore2@dataSets$Cy5, zScore2@dataSets$Cy3)
+colnames(bayes2) <- c("ID", "Cy5", "Cy3")
+target <- str_sort(bayes2$ID, numeric = T)
+bayes2 <- bayes2[match(target, bayes2$ID),]
 
-volcanoplot(fit2, highlight=20, style="B-statistic")
-abline(h = 1.3)
-abline(v = c(-1,1))
+bayes3 <- data.frame(zScore3@dataSets$Id, zScore3@dataSets$Cy5, zScore3@dataSets$Cy3)
+colnames(bayes3) <- c("ID", "Cy5", "Cy3")
+target <- str_sort(bayes3$ID, numeric = T)
+bayes3 <- bayes3[match(target, bayes3$ID),]
 
-# Construção da tabela para os genes top-ranked do modelo anterior
-table3 <- topTable(fit2, number=nrow(fit2), sort.by = "B")
+# Cálculo dos log-ratios para cada array
 
-# Seleção dos genes diferencialmente expressos
-table4 <- subset(table3, abs(table3$logFC) > 1 & table3$B > 1.3)
+ratio1 <- log2(bayes1$Cy5 / bayes1$Cy3)
+ratio2 <- log2(bayes2$Cy5 / bayes2$Cy3)
+ratio3 <- log2(bayes3$Cy5 / bayes3$Cy3)
 
-# Identificação e contagem de genes diferencialmente expressos
-diffBayes <- rownames(table4)
-nrow(table4) # 9 genes
-```
+# Construção do data frame com os ratios e identificação dos genes
 
-## i) Comente os resultados obtidos pelos dois métodos.
+allRatios <- data.frame(ratio1, ratio2, ratio3)
+rownames(allRatios) <- bayes1$ID
 
-+ genArise: 26 genes
-+ Lonnstedt & Speed: 9 genes
+# Modelo dos logratios
 
-```{r}
-diffBayes %in% diffGenes # 1, 4, 8, 9 estão presentes em ambos os vetores
+fit1 <- lmFit(allRatios)
+fit1 <- eBayes(fit1)
 
-finalDiff <- diffBayes[c(1,4,8,9)]
-finalDiff
+# Seleção dos genes diferencialmente expressos, tendo em conta o ponto de corte considerado
 
-# apenas 4 genes identificados pelo método Bayesiano fazem também parte dos identificados pelo genArise
+table1 <- topTable(fit1, number=nrow(fit1))
+table2 <- subset(table1, abs(logFC) > 1 & B > -4.4)
+nrow(table2)
+
+# ID's dos genes diferencialmente expressos, número e proporção
+
+diffBayes <- rownames(table2) 
+diffBayes; length(diffBayes); length(diffBayes) / length(Zscores)
+
+# Visualização do modelo obtido e dos genes diferencialmente expressos
+
+ggplot(table1, aes(logFC, B)) + #volcanoplot com log2Foldchange versus B
+  geom_point(size = 1, aes(color = abs(logFC) > 1 & B > -4.4)) +
+  geom_hline(yintercept = -4.4, lty=2) + # ponto de corte para B
+  geom_vline(xintercept = c(-1,1), lty=2) + # valores inferiores a -1 e superiores a 1 indicam FC significativo
+  geom_text_repel(data=table2, aes(label=rownames(table2)), size=4) + # ID dos genes diferencialmente expressos
+  scale_color_manual(values = c("grey", "black"), guide = F)
 ```
 
