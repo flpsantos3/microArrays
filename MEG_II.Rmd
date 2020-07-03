@@ -50,17 +50,21 @@ ls() # "chip1.df" "chip1.spot"
 plot(chip1$Ven, chip1$Art)
 
 ggplot(chip1) +
-  geom_point(aes(x = Art, y = Ven)) +
+  geom_point(aes(x = Ven, y = Art)) +
   xlab("Cy3 - Ven") +
   ylab("Cy5 - Art")
 
+ggplot(chip1) +
+  geom_point(aes(x = log2(Ven), y = log2(Art))) +
+  xlab("log2(Ven)") +
+  ylab("log2(Art)")
 
 # MA-plot (linear regression of log ratio against average itensity):
 ma.plot(chip1.spot)
 ```
 
 
-## b) Faça a subtração do background, nos dois canais, e compare os resultados utilizando a representação gráﬁca conArtiente. 
+## b) Faça a subtração do background, nos dois canais, e compare os resultados utilizando uma representação gráﬁca conveniente. 
 
 ```{r}
 par(mfrow=c(1,2))
@@ -114,6 +118,7 @@ abline(h=-2, col='white', lty=2)
 ```
 
 # Chips 2 e 3
+
 ```{r}
 # importing chips 2 and 3
 
@@ -130,6 +135,7 @@ spot3 <- read.spot("chip3.txt", header=T, cy3=2, bg.cy3=4, cy5=3, bg.cy5=5, ids=
 
 ```{r}
 # Criação de objetos "Spot" a partir dos ficheiros de texto
+
 spot2 <- read.spot("chip2.txt", header=T, cy3=2, bg.cy3=4, cy5=3, bg.cy5=5, ids=1, sep = "\t", is.ifc = FALSE)
 spot3 <- read.spot("chip3.txt", header=T, cy3=2, bg.cy3=4, cy5=3, bg.cy5=5, ids=1, sep = "\t", is.ifc = FALSE)
 
@@ -146,12 +152,22 @@ glNorm3 <- global.norm(mySpot = spot3)
 ma.plot(glNorm3)
 ```
 
+
 ## f) Proceda à normalização entre arrays fazendo uma transformação conveniente dos dados (sugestão: centering).
 
 ```{r}
 # Cálculo dos Z-Scores para os chips 2 e 3
 zScore2 <- Zscore(glNorm2, type = "ma")
 zScore3 <- Zscore(glNorm3, type = "ma")
+
+# plotting datasets - s.spot
+Zscore.plot(zScore2)
+abline(h=2, col='white', lty=2) 
+abline(h=-2, col='white', lty=2)
+
+Zscore.plot(zScore3)
+abline(h=2, col='white', lty=2) 
+abline(h=-2, col='white', lty=2)
 
 # Construção de data frames para zScores de cada array, ordenados por ID
 z1 <- data.frame(zScore1@dataSets$Id, zScore1@dataSets$Zscore)
@@ -197,9 +213,6 @@ diffGenes; length(diffGenes); length(diffGenes) / length(Zscores)
 
 ## h) Aplique o método bayesiano de Lonnstedt e Speed (package limma). Estabeleça algumas linhas de comando para identificar os genes com expressão diferencial e justifique o ponto de corte considerado.
 
-Ponto de corte - Bi>0; explicação no vídeo da aula de 21/5 (1:55:00)
-Selecionam-se genes com maior valor de B
-
 ```{r}
 # Construção de data frames ordenados por ID com valores de Cy5 e Cy3
 
@@ -232,7 +245,7 @@ rownames(allRatios) <- bayes1$ID
 # Modelo dos logratios
 
 fit1 <- lmFit(allRatios)
-fit1 <- eBayes(fit1)
+fit1 <- eBayes(fit1, p=0.01)
 
 # Seleção dos genes diferencialmente expressos, tendo em conta o ponto de corte considerado
 
@@ -254,4 +267,26 @@ ggplot(table1, aes(logFC, B)) + #volcanoplot com log2Foldchange versus B
   geom_text_repel(data=table2, aes(label=rownames(table2)), size=4) + # ID dos genes diferencialmente expressos
   scale_color_manual(values = c("grey", "black"), guide = F)
 ```
+
+## i) Comente os resultados obtidos pelos dois métodos.
+
++ genArise: 6 genes
++ Lonnstedt & Speed: 5 genes
+
+```{r}
+# Genes com expressão diferencial identificados pelos Z-Scores
+diffGenes; length(diffGenes); length(diffGenes) / length(Zscores)
+
+# Genes com expressão diferencial identificados pelo método de Lonnstedt & Speed (B)
+diffBayes <- rownames(table2) # tabela de genes diferencialmente expressos
+diffBayes; length(diffBayes); length(diffBayes) / length(Zscores)
+
+# Comparação dos 5 genes encontrados pelo método bayesiano com os 6 encontrados através dos Z-scores
+diffBayes %in% diffGenes # 1, 2 e 5 estão presentes em ambos os vetores
+
+# Identificação dos 2 genes comuns aos dois grupos
+finalDiff <- diffBayes[c(1,2)]
+finalDiff
+```
+
 
